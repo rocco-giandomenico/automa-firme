@@ -210,9 +210,8 @@ async function run() {
         console.error('Error during automation:', error.message);
     }
 
-    // Note: Browser remains open for observation.
-    // To close it automatically, uncomment the next line:
-    // await browser.close();
+    // Close the browser automatically
+    await browser.close();
 }
 
 run().catch(error => {
