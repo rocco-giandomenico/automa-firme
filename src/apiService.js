@@ -53,7 +53,6 @@ async function getAuthToken() {
 
         // La risposta standard OAuth2 contiene l'access_token qui:
         const token = response.data.access_token;
-        console.log(`\n--- TOKEN OTTENUTO ---\n${token}\n----------------------\n`);
         return token;
 
     } catch (error) {
@@ -93,17 +92,9 @@ async function updatePdaStatus(idPda, accessToken, dateText) {
             }
         };
 
-        console.log('\n--- DEBUG REQUEST (POSTMAN) ---');
-        console.log(`METHOD: PATCH`);
-        console.log(`URL:    ${url}`);
-        console.log(`HEADERS: ${JSON.stringify(config.headers, null, 2)}`);
-        console.log(`BODY:    ${JSON.stringify(data, null, 2)}`);
-        console.log('-------------------------------\n');
-
         const response = await withRetry(() => axios.patch(url, data, config), 3, 2000);
 
         console.log(`[API SUCCESS]: PDA ${idPda} aggiornata (Stato 20, Data: ${formattedDate}).`);
-        console.log('RISPOSTA SERVER:', JSON.stringify(response.data, null, 2));
         return true;
     } catch (error) {
         console.error(`[API ERROR]: Errore durante l'aggiornamento della PDA ${idPda}:`, error.response ? error.response.data : error.message);
