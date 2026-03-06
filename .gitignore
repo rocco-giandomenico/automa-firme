@@ -3,7 +3,7 @@ node_modules/
 package-lock.json
 
 # Configuration (contains sensitive data)
-config.json
+
 
 # Execution Data
 control.json
