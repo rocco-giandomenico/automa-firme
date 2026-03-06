@@ -63,15 +63,64 @@ async function getAuthToken() {
 }
 
 /**
+ * Funzione per aggiornare lo stato della PDA su Kiop
+ * @param {string} idPda - L'ID della PDA da aggiornare
+ * @param {string} accessToken - Il token di autenticazione Bearer
+ * @param {string} dateText - La data da inserire (formato DD/MM/YYYY o YYYY-MM-DD)
+ * @returns {Promise<boolean>} True se l'aggiornamento ha successo
+ */
+async function updatePdaStatus(idPda, accessToken, dateText) {
+    try {
+        const url = `https://pda.kiop.it/solida/api/automa/pda/${idPda}`;
+
+        // Formatta la data da DD/MM/YYYY a YYYY-MM-DD se necessario
+        let formattedDate = dateText;
+        if (dateText && dateText.includes('/')) {
+            const [day, month, year] = dateText.split('/');
+            formattedDate = `${year}-${month}-${day}`;
+        }
+
+        const data = {
+            stato: 20,
+            microstato: '',
+            dataInsMandataria: formattedDate
+        };
+
+        const config = {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json'
+            }
+        };
+
+        console.log('\n--- DEBUG REQUEST (POSTMAN) ---');
+        console.log(`METHOD: PATCH`);
+        console.log(`URL:    ${url}`);
+        console.log(`HEADERS: ${JSON.stringify(config.headers, null, 2)}`);
+        console.log(`BODY:    ${JSON.stringify(data, null, 2)}`);
+        console.log('-------------------------------\n');
+
+        const response = await withRetry(() => axios.patch(url, data, config), 3, 2000);
+
+        console.log(`[API SUCCESS]: PDA ${idPda} aggiornata (Stato 20, Data: ${formattedDate}).`);
+        console.log('RISPOSTA SERVER:', JSON.stringify(response.data, null, 2));
+        return true;
+    } catch (error) {
+        console.error(`[API ERROR]: Errore durante l'aggiornamento della PDA ${idPda}:`, error.response ? error.response.data : error.message);
+        return false;
+    }
+}
+
+/**
  * Funzione principale che esegue il flusso API per un record accettato
  * @param {string} accountId - L'ID dell'account (es. 495077)
  * @param {string} accountName - Il nome dell'account (es. OP0015532403)
  * @param {string} dateText - La data estratta (es. 05/03/2026)
  */
 async function processAcceptedRecord(accountId, accountName, dateText) {
-    console.log(`\nIniziando il processo API per Account: ${accountName}`);
+    console.log(`\nIniziando il processo API per Account: ${accountName} (ID PDA: ${accountId})`);
 
-    // Auth call (with built-in retry logic above)
+    // 1. Ottieni il token
     const token = await getAuthToken();
 
     if (!token) {
@@ -79,10 +128,16 @@ async function processAcceptedRecord(accountId, accountName, dateText) {
         return false;
     }
 
-    console.log(`Token ottenuto con successo per ${accountName}. Endpoint API completato.`);
+    // 2. Esegui la chiamata PATCH per aggiornare lo stato e la data
+    const patchSuccess = await updatePdaStatus(accountId, token, dateText);
 
-    // Essendo necessaria *solo* l'authententicazione per ora, restituiamo true
-    return true;
+    if (patchSuccess) {
+        console.log(`Flusso API completato con successo per ${accountName}.`);
+        return true;
+    } else {
+        console.error(`Flusso API fallito nella fase di PATCH per ${accountName}.`);
+        return false;
+    }
 }
 
 module.exports = {
