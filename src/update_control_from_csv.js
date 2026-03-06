@@ -64,7 +64,32 @@ async function run() {
     const finalJson = { results };
 
     fs.writeFileSync(jsonPath, JSON.stringify(finalJson, null, 4));
+
+    // File Logging
+    const logsDir = path.join(rootDir, 'logs');
+    if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir);
+    }
+    const logFilePath = path.join(logsDir, 'update_history.log');
+    const timestamp = new Date().toISOString();
+    const logEntry = `[${timestamp}] Updated control.json with ${results.length} items from source: ${path.basename(csvPath)}`;
+
+    let logLines = [];
+    if (fs.existsSync(logFilePath)) {
+        logLines = fs.readFileSync(logFilePath, 'utf8').split('\n').filter(line => line.trim() !== '');
+    }
+
+    logLines.push(logEntry);
+
+    // Keep only the last 1000 lines
+    if (logLines.length > 1000) {
+        logLines = logLines.slice(logLines.length - 1000);
+    }
+
+    fs.writeFileSync(logFilePath, logLines.join('\n') + '\n');
+
     console.log(`\nSuccessfully updated control.json with ${results.length} items from ${path.basename(csvPath)}.`);
+    console.log(`Log entry added to: ${logFilePath} (showing last ${logLines.length} entries)`);
 }
 
 run();
