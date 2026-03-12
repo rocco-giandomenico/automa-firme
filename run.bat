@@ -1,35 +1,15 @@
 @echo off
 echo ===================================================
-echo 0. SELEZIONE ACCOUNT...
+echo AVVIO CICLO PROFILI DEFINITI IN config.json
 echo ===================================================
-node src\select_profile.js
+node src\execute_all_profiles.js
 if %errorlevel% neq 0 (
-    exit /b %errorlevel%
-)
-
-echo.
-echo ===================================================
-echo 1. AGGIORNAMENTO CONTROL.JSON DA CSV...
-echo ===================================================
-node src\update_control_from_csv.js
-if %errorlevel% neq 0 (
-    echo [ERRORE] L'aggiornamento del file control.json e' fallito!
-    exit /b %errorlevel%
-)
-
-echo.
-echo ===================================================
-echo 2. AVVIO AUTOMAZIONE BROWSER...
-echo ===================================================
-node src\nav_to_login.js
-if %errorlevel% neq 0 (
-    echo [ERRORE] L'automazione browser e' fallita o e' stata interrotta!
+    echo [ERRORE] L'esecuzione del ciclo profili e' fallita!
     pause
     exit /b %errorlevel%
 )
-
 echo.
 echo ===================================================
-echo PROCESSO COMPLETATO!
+echo PROCESSO COMPLETATO PER TUTTI I PROFILI!
 echo ===================================================
 pause
