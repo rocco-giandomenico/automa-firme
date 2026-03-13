@@ -10,7 +10,7 @@ function cleanupLock() {
     if (fs.existsSync(LOCK_FILE_PATH)) {
         try {
             fs.unlinkSync(LOCK_FILE_PATH);
-            logger.info('File app.lock rimosso con successo.');
+            logger.info('File app.lock rimosso con successo.\n');
         } catch (e) {
             logger.error(`Impossibile rimuovere app.lock: ${e.message}`);
         }
