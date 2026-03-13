@@ -9,17 +9,32 @@ if (!fs.existsSync(logsDir)) {
 }
 
 function getTimestamp() {
-    return new Date().toISOString();
+    return new Date().toLocaleString('it-IT', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+    });
 }
 
 function getTodayLogFile() {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    return path.join(logsDir, `${today}.log`);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    return path.join(logsDir, `${dateStr}.log`);
 }
 
 function getTodayReportFile() {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    return path.join(logsDir, `report-${today}.log`);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+    return path.join(logsDir, `report-${dateStr}.log`);
 }
 
 function writeToFile(level, message) {

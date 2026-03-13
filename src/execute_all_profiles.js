@@ -4,6 +4,29 @@ const { updateControlFromApi } = require('./update_control_from_api');
 const { loginAndProcess } = require('./nav_to_login');
 const logger = require('./logger');
 
+const LOCK_FILE_PATH = path.join(__dirname, '..', 'app.lock');
+
+function cleanupLock() {
+    if (fs.existsSync(LOCK_FILE_PATH)) {
+        try {
+            fs.unlinkSync(LOCK_FILE_PATH);
+            logger.info('File app.lock rimosso con successo.');
+        } catch (e) {
+            logger.error(`Impossibile rimuovere app.lock: ${e.message}`);
+        }
+    }
+}
+
+// Gestione segnali per rimuovere il lock se il processo viene interrotto (PM2, CTRL+C, ecc.)
+process.on('SIGINT', () => { cleanupLock(); process.exit(0); });
+process.on('SIGTERM', () => { cleanupLock(); process.exit(0); });
+process.on('uncaughtException', (err) => {
+    logger.error(`Errore non gestito: ${err.message}`);
+    cleanupLock();
+    process.exit(1);
+});
+process.on('exit', () => cleanupLock());
+
 function printStatistics(resultsByProfile, durationMs) {
     logger.report(`\n=============================================================`);
     logger.report(`📊 STATISTICHE FINALI ESECUZIONE 📊`);
@@ -44,12 +67,12 @@ function printStatistics(resultsByProfile, durationMs) {
         results.forEach(item => {
             const isInserita = item.inserita === 'si';
             const isNonTrovato = item.status === 'Non Trovato';
-            
+
             const status = item.status || 'Sconosciuto';
             profileStats.perStato[status] = (profileStats.perStato[status] || 0) + 1;
 
             profileStats.inseriti += (isInserita ? 1 : 0);
-            
+
             // Un errore di invio è reale solo se la pratica DOVEVA essere inserita (Accettata o Scaduta) ma non lo è stata
             if (!isInserita && (status === 'Accettata' || status === 'Scaduta')) {
                 profileStats.erroriInvio++;
@@ -73,7 +96,7 @@ function printStatistics(resultsByProfile, durationMs) {
         logger.report(`[ PROFILO: ${name} ]\n`);
         logger.report(`Totale PDA:           ${profileStats.totale}`);
         logger.report(`Totale Inserite:      ${profileStats.inseriti}`);
-        
+
         if (profileStats.erroriInvio > 0) {
             logger.report(`⚠️  Errori Invio API:   ${profileStats.erroriInvio}`);
         }
@@ -92,7 +115,7 @@ function printStatistics(resultsByProfile, durationMs) {
     logger.report(`Tempo di esecuzione:         ${timeString}`);
     logger.report(`Totale Complessivo PDA:      ${globalStats.totale}`);
     logger.report(`Totale Complessivo Inserite: ${globalStats.inseriti}`);
-    
+
     if (globalStats.erroriInvio > 0) {
         logger.report(`⚠️  Totale Errori Invio API:  ${globalStats.erroriInvio}`);
     }
@@ -109,6 +132,24 @@ function printStatistics(resultsByProfile, durationMs) {
 }
 
 async function main() {
+    if (fs.existsSync(LOCK_FILE_PATH)) {
+        const lockContent = fs.readFileSync(LOCK_FILE_PATH, 'utf8');
+        const lockTime = new Date(lockContent).getTime();
+        const now = Date.now();
+        // Se il lock ha più di 2 ore (7200000 ms), forzalo come obsoleto
+        if (now - lockTime > 7200000) {
+            logger.report(`[LOCK] Trovato un vecchio file app.lock (più di 2 ore fa). Forzo l'eliminazione e procedo...`);
+            cleanupLock();
+        } else {
+            logger.report(`[LOCK] Un'altra istanza è già in esecuzione! Rilevato il file app.lock creato il ${new Date(lockTime).toLocaleString('it-IT')}`);
+            logger.report(`Se sei certo che si tratti di un errore bloccato, elimina manualmente il file ${LOCK_FILE_PATH}`);
+            process.exit(1);
+        }
+    }
+
+    // Crea il file di lock per prevenire esecuzioni multiple
+    fs.writeFileSync(LOCK_FILE_PATH, new Date().toLocaleString('it-IT'), 'utf8');
+
     const startTime = Date.now();
     const configPath = path.join(__dirname, '..', 'config.json');
     if (!fs.existsSync(configPath)) {
@@ -185,6 +226,9 @@ async function main() {
     logger.report(`\n=============================================================`);
     logger.report(`🎉 TUTTI I PROFILI SONO STATI ELABORATI 🎉`);
     logger.report(`=============================================================\n`);
+
+    // Forza uscita pulita. Questo fa sì che l'evento process.on('exit') svuoti il file lock.
+    process.exit(0);
 }
 
 main().catch(err => {
